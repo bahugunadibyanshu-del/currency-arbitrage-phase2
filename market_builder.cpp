@@ -1,13 +1,3 @@
-// Part 1 (C++ / OOP): market data builder
-// Downloads today's USD-based reference rates, works out the rate between
-// every pair of currencies, adds our fee/spread assumptions and saves
-// everything to edges.csv for the C program to analyse.
-//
-// Usage:
-//   ./market_builder                live data only
-//   ./market_builder --demo         live data + two clearly labelled fake mispricings
-//   ./market_builder --file x.json  use a saved API response (handy for offline testing)
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
