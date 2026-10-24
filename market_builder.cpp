@@ -15,7 +15,7 @@ struct Currency {
     double unitsPerUSD;
 };
 
-// Gets the raw JSON and pulls numbers out of it.
+
 class LiveRateProvider {
 public:
     string fetchRates() const {
@@ -35,8 +35,7 @@ public:
         return ss.str();
     }
 
-    // Looks up one currency inside the "rates" object only.
-    // (Searching the whole text would hit "base_code":"USD" first and fail.)
+    
     bool readRate(const string &json, const string &code, double &rate) const {
         size_t ratesPos = json.find("\"rates\"");
         if (ratesPos == string::npos) return false;
@@ -62,7 +61,7 @@ public:
     }
 };
 
-// Our assumed trading costs (the API does not provide these).
+
 class MarketConditions {
 private:
     double feePercent;
@@ -80,14 +79,14 @@ public:
     }
 };
 
-// Holds the currencies and writes the graph out.
+
 class MarketDataBuilder {
 private:
     vector<Currency> currencies;
     vector<string> supported = {"USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "CHF", "SGD"};
     bool demoMode = false;
 
-    // Only used in --demo mode: pretend one venue quotes a few routes too generously.
+    
     double demoFactor(const string &from, const string &to) const {
         if (!demoMode) return 1.0;
         if (from == "INR" && to == "GBP") return 1.015;  // +1.5%
@@ -177,7 +176,7 @@ int main(int argc, char **argv) {
     builder.setDemoMode(demo);
     if (!builder.load(json, provider)) return 1;
 
-    MarketConditions market(0.10, 0.10);  // change these to try other cost assumptions
+    MarketConditions market(0.10, 0.10);  
     builder.showRates();
 
     cout << "\nCOST ASSUMPTIONS (ours, not from the API)\n";
