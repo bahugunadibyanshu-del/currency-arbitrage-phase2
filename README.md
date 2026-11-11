@@ -1,5 +1,5 @@
 # Currency Arbitrage: Finding the Best Profitable Route
-**Part 1:** C++ (OOP) builds the market graph. **Part 2:** C (DSA) finds the best route.
+**Part 1:** C++ (OOP) builds the market graph. **Part 2:** C (DSA) finds the best route. **Phase 3 addition:** enter a starting amount and inspect fee and spread deductions at every conversion.
 
 ## How to run in VS Code
 
@@ -36,6 +36,8 @@ clang arbitrage.c -o arbitrage -lm
 
 Why two steps? Bellman-Ford only tells you *whether* a profitable cycle exists, not which one is best. The route search ranks them by return.
 
+When the C analyzer starts, enter a positive starting amount. The same numeric amount is evaluated for each route in that route's starting currency. The route walkthrough shows the gross converted amount, fee deduction, spread deduction, and net amount for every leg. The route ranking remains based on the net percentage return, so changing the starting amount changes the displayed amounts but not the ranking.
+
 ## Expected output
 
 **Live data (`./run.sh`):** no profitable route exists, because every cross-rate comes from one consistent snapshot, so any round trip only loses the fees. The program shows the least-bad round trip for comparison (about -0.6%).
@@ -52,6 +54,7 @@ NO PROFITABLE ROUTE EXISTS in this data.
 BEST PROFITABLE ROUTE
   EUR -> JPY -> INR -> GBP -> EUR
   Start with 1000.00 EUR
+  EUR -> JPY at ...: gross ..., fee ..., spread ..., net ... JPY
   ...
   Net change: +27.0465 EUR (+2.7047%)
 ```

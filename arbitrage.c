@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <errno.h>
 
 #define MAX_CURRENCIES 20
 #define MAX_EDGES 400
@@ -16,7 +17,6 @@
 #define MAX_STEPS 4
 #define CODE_LEN 4
 #define LINE_LEN 512
-#define START_AMOUNT 1000.0
 
 typedef struct {
     char code[CODE_LEN];
@@ -82,6 +82,30 @@ static int loadGraph(const char *filename) {
     return currencyCount > 1 && edgeCount > 0;
 }
 
+static int readStartAmount(double *amount) {
+    char input[128];
+    char *end;
+
+    printf("\nEnter starting amount for each route (same numeric amount in that route's starting currency): ");
+    if (!fgets(input, sizeof(input), stdin)) return 0;
+
+    errno = 0;
+    double value = strtod(input, &end);
+    while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n') end++;
+    if (end == input || *end != '\0' || errno == ERANGE || !isfinite(value) || value <= 0.0) {
+        fprintf(stderr, "Please enter a finite amount greater than zero.\n");
+        return 0;
+    }
+    *amount = value;
+    return 1;
+}
+
+static const Edge *findEdge(int from, int to) {
+    for (int i = 0; i < edgeCount; i++)
+        if (edges[i].from == from && edges[i].to == to) return &edges[i];
+    return NULL;
+}
+
 /* ---------- Bellman-Ford: does ANY profitable cycle exist? ---------- */
 
 static int hasNegativeCycle(void) {
@@ -141,17 +165,25 @@ static void printRoute(const Route *r) {
     printf("%s\n", currencies[r->path[0]].code);
 }
 
-static void printWalkthrough(const Route *r) {
-    double amount = START_AMOUNT;
+static void printWalkthrough(const Route *r, double startAmount) {
+    double amount = startAmount;
     printf("  Start with %.2f %s\n", amount, currencies[r->path[0]].code);
     for (int i = 0; i < r->length; i++) {
         int from = r->path[i], to = r->path[(i + 1) % r->length];
-        amount *= effective[from][to];
-        printf("  %s -> %s  at %.6f  =  %.4f %s\n", currencies[from].code,
-               currencies[to].code, effective[from][to], amount, currencies[to].code);
+        const Edge *edge = findEdge(from, to);
+        if (!edge) return;
+
+        double grossAmount = amount * edge->rate;
+        double feeCost = grossAmount * edge->fee / 100.0;
+        double afterFee = grossAmount - feeCost;
+        double spreadCost = afterFee * edge->spread / 100.0;
+        amount = afterFee - spreadCost;
+        printf("  %s -> %s at %.6f: gross %.4f, fee %.4f, spread %.4f, net %.4f %s\n",
+               currencies[from].code, currencies[to].code, edge->rate,
+               grossAmount, feeCost, spreadCost, amount, currencies[to].code);
     }
-    printf("  Net change: %+.4f %s (%+.4f%%)\n", amount - START_AMOUNT,
-           currencies[r->path[0]].code, (amount / START_AMOUNT - 1.0) * 100.0);
+    printf("  Net change: %+.4f %s (%+.4f%%)\n", amount - startAmount,
+           currencies[r->path[0]].code, (amount / startAmount - 1.0) * 100.0);
 }
 
 int main(void) {
@@ -162,6 +194,10 @@ int main(void) {
     }
     printf("Loaded %d currencies and %d directed routes from edges.csv.\n",
            currencyCount, edgeCount);
+
+    double startAmount;
+    if (!readStartAmount(&startAmount)) return 1;
+    printf("Using %.2f units as the starting amount for each route.\n", startAmount);
 
     /* Step 1: Bellman-Ford */
     puts("\nSTEP 1 - BELLMAN-FORD (is there any profitable cycle?)");
@@ -192,7 +228,7 @@ int main(void) {
         puts("\nBEST PROFITABLE ROUTE");
         printf("  ");
         printRoute(&routes[0]);
-        printWalkthrough(&routes[0]);
+        printWalkthrough(&routes[0], startAmount);
 
         puts("\nTOP ROUTES");
         int show = profitable < 5 ? profitable : 5;
@@ -205,7 +241,7 @@ int main(void) {
         puts("Closest round trip (smallest loss), shown for comparison:");
         printf("  ");
         printRoute(&routes[0]);
-        printWalkthrough(&routes[0]);
+        printWalkthrough(&routes[0], startAmount);
         puts("\n  This is expected: all rates come from one consistent snapshot, so the");
         puts("  only thing a round trip can do is lose the fees and spread.");
     }
